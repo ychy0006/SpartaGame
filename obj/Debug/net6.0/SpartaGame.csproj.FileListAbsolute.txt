@@ -1,0 +1,14 @@
+D:\bootcamp_workspace\SpartaGame\SpartaGame\bin\Debug\net6.0\SpartaGame.exe
+D:\bootcamp_workspace\SpartaGame\SpartaGame\bin\Debug\net6.0\SpartaGame.deps.json
+D:\bootcamp_workspace\SpartaGame\SpartaGame\bin\Debug\net6.0\SpartaGame.runtimeconfig.json
+D:\bootcamp_workspace\SpartaGame\SpartaGame\bin\Debug\net6.0\SpartaGame.dll
+D:\bootcamp_workspace\SpartaGame\SpartaGame\bin\Debug\net6.0\SpartaGame.pdb
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.GeneratedMSBuildEditorConfig.editorconfig
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.AssemblyInfoInputs.cache
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.AssemblyInfo.cs
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.csproj.CoreCompileInputs.cache
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.dll
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\refint\SpartaGame.dll
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.pdb
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.genruntimeconfig.cache
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\ref\SpartaGame.dll
