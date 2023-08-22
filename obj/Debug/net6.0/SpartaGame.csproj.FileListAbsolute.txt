@@ -12,3 +12,5 @@ D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\refint\SpartaGame.d
 D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.pdb
 D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.genruntimeconfig.cache
 D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\ref\SpartaGame.dll
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\Interop.Accessibility.dll
+D:\bootcamp_workspace\SpartaGame\SpartaGame\obj\Debug\net6.0\SpartaGame.csproj.ResolveComReference.cache

@@ -1,29 +1,30 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Threading;
-using System.Text;
-using System.Numerics;
+﻿using System.Diagnostics;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Xml.Linq;
 
 namespace SpartaGame
 {
-    public struct MultipleItemStruct
+    public struct MultipleItemStruct //여러 개 가질 수 있는 아이템
     {
         public MultipleItem item;
         public int amount;
     };
 
+    
+
     internal class Program
     {
         private static Character player;
         private static SingleItem[] shop_single;
-        private static MultipleItem[] shop_multiple;
+        private static MultipleItem[] shop_multiple; //이 세 개는 초기상태 그대로
+
+        private static int AdditionalAtkPotion = 0;
+        private static int AdditionalDefPotion = 0;
 
         static void Main(string[] args)
         {
             DataSetting();
             MainScreen();
-            
         }
 
         static void DataSetting()
@@ -34,6 +35,7 @@ namespace SpartaGame
             shop_multiple = new MultipleItem[3] { new Lv1_HealthPotion(), new Lv1_AttackPotion(), new Lv10_HealthPotion() };
         }
 
+
         static void MainScreen()
         {
             Console.Clear();
@@ -42,24 +44,37 @@ namespace SpartaGame
             Console.WriteLine("이곳에서 던전으로 들어가기 전 활동을 할 수 있습니다.\n");
             Console.WriteLine("1. 상태 보기");
             Console.WriteLine("2. 인벤토리");
-            Console.WriteLine("3. 상점\n");
+            Console.WriteLine("3. 상점");
+            Console.WriteLine("4. 던전 입장");
+            //Console.WriteLine("5. 게임 종료");
+            //Console.WriteLine("6. 불러오기\n");
             Console.WriteLine("원하시는 행동을 입력해주세요.\n");
             Console.Write(">> ");
-                        
-            switch (CheckValidInput(1, 3))
+
+            switch (CheckValidInput(1, 4))
             {
-                case 1: 
-                    StatusScreen();
+                case 1:
+                    StatusScreen(); //상태창
                     break;
                 case 2:
-                    InventoryScreen();
+                    InventoryScreen(); //아이템창
                     break;
                 case 3:
-                    ShopScreen();
+                    ShopScreen(); //상점창
                     break;
+                case 4:
+                    DungeonScreen(); //던전창
+                    break;
+                //case 5:
+                //    Save(); //게임종료하기전에 저장
+                //    return;
+                //case 6:
+                //    LoadData(); //불러오기
+                //    MainScreen();
+                //    break;
             }
         }
-        
+
         static void StatusScreen()
         {
             Console.Clear();
@@ -72,14 +87,14 @@ namespace SpartaGame
             Console.WriteLine("Lv. " + player.Level.ToString("D2"));
             Console.WriteLine(player.Name + " ( " + player.Job + " )");
             Console.Write("공격력 : " + player.Atk);
-            if (player.AdditionalAtk != 0)
+            if (player.AdditionalAtkEquip != 0)
             {
-                Console.Write(" (+{0})",player.AdditionalAtk);
+                Console.Write(" (+{0})", player.AdditionalAtkEquip);
             }
             Console.Write("\n방어력 : " + player.Def);
-            if (player.AdditionalDef != 0)
+            if (player.AdditionalDefEquip != 0)
             {
-                Console.Write(" (+{0})",player.AdditionalDef);
+                Console.Write(" (+{0})", player.AdditionalDefEquip);
             }
             Console.WriteLine("\n체  력 : " + player.Hp);
             Console.WriteLine(" Gold  : " + String.Format("{0:#,###}", player.Gold) + " G\n");
@@ -102,13 +117,21 @@ namespace SpartaGame
             Console.WriteLine("보유 중인 아이템을 관리할 수 있습니다.\n");
             Console.WriteLine("[아이템 목록]");
 
-            foreach(SingleItem item in player.Inventory_single)
+            foreach (SingleItem item in player.Inventory_single) //하나만 가질 수 있는 아이템
             {
                 Console.WriteLine("- {0} | {1} +{2} | {3}", item.ItemName.PadRight(20 - item.ItemName.Length), ClassifyType(item), item.Stats.ToString().PadRight(3), item.ItemExplain);
             }
-            foreach (MultipleItemStruct std in player.Inventory_multiple)
+            foreach (MultipleItemStruct std in player.Inventory_multiple) //여러 개 가질 수 있는 아이템
             {
-                Console.WriteLine("- {0} | {1} +{2} | {3}개 | {4}", std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
+                if (std.item.InsertCondition == 1)
+                {
+                    Console.Write("- [I]");
+                }
+                else 
+                {
+                    Console.Write("- ");
+                }
+                Console.WriteLine("{0} | {1} +{2} | {3}개 | {4}", std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
             }
             Console.WriteLine("\n1. 장착 관리");
             Console.WriteLine("2. 슬롯 관리");
@@ -130,7 +153,7 @@ namespace SpartaGame
             }
         }
 
-        static void InventoryManageScreen()
+        static void InventoryManageScreen() //장착 관리(고유아이템만 적용)
         {
             while (true)
             {
@@ -143,7 +166,7 @@ namespace SpartaGame
                 Console.WriteLine("[아이템 목록]");
 
                 int i = 1;
-
+                
                 foreach (SingleItem item in player.Inventory_single)
                 {
                     Console.WriteLine("- {0} {1} | {2} +{3} | {4}", i, item.ItemName.PadRight(20 - item.ItemName.Length), ClassifyType(item), item.Stats.ToString().PadRight(3), item.ItemExplain);
@@ -174,7 +197,7 @@ namespace SpartaGame
 
         }
 
-        static void SlotManageScreen()
+        static void SlotManageScreen() //슬롯 관리창(비고유아이템만 적용)
         {
             while (true)
             {
@@ -190,7 +213,15 @@ namespace SpartaGame
 
                 foreach (MultipleItemStruct std in player.Inventory_multiple)
                 {
-                    Console.WriteLine("- {0} {1} | {2} +{3} | {4}개 | {5}", i, std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
+                    if (std.item.InsertCondition == 1)
+                    {
+                        Console.Write("- {0} [I]", i);
+                    }
+                    else
+                    {
+                        Console.Write("- {0}", i);
+                    }
+                    Console.WriteLine(" {0} | {1} +{2} | {3}개 | {4}", std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
                     i++;
                 }
 
@@ -198,8 +229,7 @@ namespace SpartaGame
                 foreach (MultipleItemStruct std in player.Slot)
                 {
                     Console.WriteLine("- {0} | {1} +{2} | {3}개 | {4}", std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
-                    i++;
-                }
+                 }
                 Console.WriteLine("\n0. 나가기\n");
                 Console.WriteLine("원하시는 행동을 입력해주세요.\n");
                 Console.Write(">> ");
@@ -232,7 +262,7 @@ namespace SpartaGame
             InventoryScreen();
         }
 
-        static void ShopScreen()
+        static void ShopScreen() //상점창. 모든 아이템 보여줌
         {
 
             Console.Clear();
@@ -252,7 +282,7 @@ namespace SpartaGame
                 }
                 else
                 {
-                    Console.WriteLine("{0} G",item.Price.ToString().PadLeft(6));
+                    Console.WriteLine("{0} G", item.Price.ToString().PadLeft(6));
                 }
             }
             foreach (MultipleItem item in shop_multiple)
@@ -291,7 +321,7 @@ namespace SpartaGame
 
         }
 
-        static void ShopBuyScreen()
+        static void ShopBuyScreen() //상점구입창
         {
             while (true)
             {
@@ -315,7 +345,7 @@ namespace SpartaGame
                     }
                     else
                     {
-                        Console.WriteLine(item.Price + " G");
+                        Console.WriteLine("{0} G", item.Price.ToString().PadLeft(6));
                     }
                     i++;
                 }
@@ -367,7 +397,7 @@ namespace SpartaGame
 
                         }
                     }
-                    else 
+                    else
                     {
                         flag -= (1 + shop_single.Count());
                         player.BuyingMultipleItem(shop_multiple[flag]);
@@ -377,7 +407,7 @@ namespace SpartaGame
             ShopScreen();
         }
 
-        static void ShopSellScreen()
+        static void ShopSellScreen() //상점 판매창
         {
             while (true)
             {
@@ -416,6 +446,141 @@ namespace SpartaGame
             ShopScreen();
         }
 
+        static void DungeonScreen()
+        {
+            int i;
+
+            while (true)
+            {
+                Console.Clear();
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("던전 입장");
+                Console.ResetColor();
+                Console.WriteLine("이곳에서 던전으로 들어가기 전 활동을 할 수 있습니다.\n");
+
+                Console.WriteLine("슬롯");
+                foreach (var itemstd in player.Slot)
+                {
+                    Console.Write(itemstd.item.ItemName + " ");
+                    Console.WriteLine(itemstd.amount + "개");
+                }
+                Console.WriteLine();
+
+                Console.WriteLine("1. 쉬운 던전");
+                Console.WriteLine("2. 일반 던전");
+                Console.WriteLine("3. 어려운 던전\n");
+                Console.WriteLine("4. 슬롯 아이템 사용\n");
+                Console.WriteLine("0. 나가기\n");
+                Console.WriteLine("원하시는 행동을 입력해주세요.\n");
+                Console.Write(">> ");
+
+                List<MultipleItem> rewards;
+
+                Stage stage;
+
+                i = CheckValidInput(0, 4);
+
+                if (i == 0)
+                {
+                    break;
+                }
+                else if (i == 4)
+                {
+                    break;
+                }
+                if(player.Hp > 0) 
+                {
+                    switch (i)
+                    {
+                        case 1:
+                            rewards = new List<MultipleItem>() { new Lv1_HealthPotion() };
+                            stage = new Stage(player, rewards, 1);
+                            stage.Start();
+                            break;
+                        case 2:
+                            rewards = new List<MultipleItem>() { new Lv1_HealthPotion(), new Lv1_AttackPotion() };
+                            stage = new Stage(player, rewards, 2);
+                            stage.Start();
+                            break;
+                        case 3:
+                            rewards = new List<MultipleItem>() { new Lv1_HealthPotion(), new Lv10_HealthPotion() };
+                            stage = new Stage(player, rewards, 3);
+                            stage.Start();
+                            break;
+                    }
+
+                    player.Atk -= AdditionalAtkPotion;
+                    player.Def -= AdditionalDefPotion;
+                    AdditionalAtkPotion = 0;
+                    AdditionalDefPotion = 0;
+                }
+                else
+                {
+                    Console.WriteLine("체력이 없습니다.\n");
+                    Thread.Sleep(1000);
+                }
+                
+            }
+            if (i == 0) MainScreen();
+            else PotionUsingScreen();
+        }
+
+        static void PotionUsingScreen() 
+        {
+            Console.Clear();
+
+            while (true)
+            {
+                Console.Clear();
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("슬롯 아이템 사용");
+                Console.ResetColor();
+                Console.WriteLine("슬롯의 포션을 사용할 수 있습니다.\n");
+                Console.WriteLine("[슬롯 목록]");
+
+                int i = 1;
+
+                foreach (MultipleItemStruct std in player.Slot)
+                {
+                    Console.WriteLine("- {0} {1} | {2} +{3} | {4}개 | {5}", i, std.item.ItemName.PadRight(20 - std.item.ItemName.Length), ClassifyType_(std.item), std.item.Stats.ToString().PadRight(3), std.amount, std.item.ItemExplain);
+                    i++;
+                }
+
+                Console.WriteLine("\n0. 나가기\n");
+                Console.WriteLine("원하시는 행동을 입력해주세요.\n");
+                Console.Write(">> ");
+
+                int flag = CheckValidInput(0, player.Slot.Count());
+                if (flag == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    MultipleItem item = player.Slot[flag - 1].item;
+                    player.UsingMultipleItem(item);
+                    if (item.TypeNumber == (int)MultipleItem.Typename.Attack)
+                    {
+                        AdditionalAtkPotion += item.Stats;
+                        player.Atk += item.Stats;
+                    }
+                    else if(item.TypeNumber == (int)MultipleItem.Typename.Defense)
+                    {
+                        AdditionalDefPotion += item.Stats;
+                        player.Def += item.Stats;
+                    }
+                    else
+                    {
+                        player.Hp += item.Stats;
+                        if (player.Hp > 100) player.Hp = 100;
+                    }
+                }
+            }
+            DungeonScreen();
+        }
+
         static string ClassifyType(SingleItem item)
         {
             switch (item.TypeNumber)
@@ -431,9 +596,9 @@ namespace SpartaGame
         }
         static string ClassifyType_(MultipleItem item)
         {
-            switch (item.TypeNumber) 
+            switch (item.TypeNumber)
             {
-                case 0: 
+                case 0:
                     return "공격력";
                 case 1:
                     return "방어력";
@@ -466,16 +631,234 @@ namespace SpartaGame
         }
     }
 
-    public class Character
+    public class Stage
+    {
+        private Character character; //캐릭터
+        private Monster monster; // 몬스터
+        private Monster monster2;
+        private List<MultipleItem> rewards; // 보상 아이템들
+        private int level;
+        private int defense;
+        private int rewardGold;
+        private int pastHp;
+        private int pastGold;
+
+        public Stage(Character character, List<MultipleItem> rewards, int level) //스테이지 당 몬스터 한마리씩 나옴
+        {
+            this.character = character;
+            this.rewards = rewards;
+            this.level = level;
+            this.pastHp = character.Hp;
+            this.pastGold = character.Gold;
+        }
+
+        public void Start()
+        {
+            Console.Clear();
+            Random random = new Random();
+            int damage;
+
+            Console.WriteLine($"스테이지 시작! 플레이어 정보: 체력({character.Hp}), 공격력({character.Atk})");
+            switch (level)
+            {
+                case 1: //권장 방어력 5
+                    defense = 5;
+                    rewardGold = 1000 + random.Next(character.Atk * 11 / 10, character.Atk * 12 / 10);
+                    monster = new Goblin("고블린");
+                    monster.AttackMin = 20 - (character.Def - defense);
+                    monster.AttackMax = 35 - (character.Def - defense);
+                    break;
+                case 2: //권장 방어력 11
+                    defense = 11;
+                    rewardGold = 1700 + random.Next(character.Atk * 11 / 10, character.Atk * 12 / 10);
+                    monster = new Dragon("드래곤");
+                    monster.AttackMin = 20 - (character.Def - defense);
+                    monster.AttackMax = 35 - (character.Def - defense);
+                    break;
+                case 3: //권장 방어력 17
+                    defense = 17;
+                    rewardGold = 2500 + random.Next(character.Atk * 11 / 10, character.Atk * 12 / 10);
+                    monster = new Goblin("고블린");
+                    monster2 = new Dragon("드래곤");
+                    int min = 20 - (character.Def - defense);
+                    int max = 35 - (character.Def - defense);
+                    monster.AttackMin = min * 3 / 10;
+                    monster2.AttackMin = min * 7 / 10;
+                    monster.AttackMax = max * 3 / 10;
+                    monster2.AttackMax = max * 7 / 10;
+                    break;
+            }
+
+            Console.WriteLine($"몬스터 정보: 이름({monster.Name}), 체력({monster.Health})");
+            if (monster2 != null) Console.WriteLine($"몬스터 정보: 이름({monster2.Name}), 체력({monster2.Health})");
+            Console.WriteLine("----------------------------------------------------");
+
+            while (!character.IsDead) // 플레이어가 죽을 때까지
+            {
+                // 플레이어의 턴
+                Console.WriteLine($"{character.Name}의 턴!");
+                damage = character.Atk;
+                if (monster2 != null)
+                {
+                    if ((monster.IsDead == false) && (monster2.IsDead == false))
+                    {
+                        switch (random.Next(0, 2))
+                        {
+                            case 0:
+                                monster.TakeDamage(damage);
+                                Thread.Sleep(1000);
+                                break;
+                            case 1:
+                                monster.TakeDamage(damage);
+                                Thread.Sleep(1000);
+                                break;
+                        }
+                    }
+                    else if (monster.IsDead == false)
+                    {
+                        monster.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                        if (monster.IsDead) break;
+                    }
+                    else
+                    {
+                        monster2.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                        if (monster2.IsDead) break;
+                    }
+                }
+                else
+                {
+                    monster.TakeDamage(damage);
+                    Thread.Sleep(1000);
+                    if (monster.IsDead) break;
+
+                }
+                Console.WriteLine();
+
+                // 몬스터의 턴
+                if (monster2 != null)
+                {
+                    if ((monster.IsDead == false) && (monster2.IsDead == false))
+                    {
+                        Console.WriteLine($"{monster.Name}의 턴!");
+                        damage = random.Next(monster.AttackMin, monster.AttackMax);
+                        character.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                        Console.WriteLine($"{monster2.Name}의 턴!");
+                        damage = random.Next(monster2.AttackMin, monster2.AttackMax);
+                        character.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                    }
+                    else if (monster.IsDead == false)
+                    {
+                        Console.WriteLine($"{monster.Name}의 턴!");
+                        damage = random.Next(monster.AttackMin, monster.AttackMax);
+                        character.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{monster2.Name}의 턴!");
+                        damage = random.Next(monster2.AttackMin, monster2.AttackMax);
+                        character.TakeDamage(damage);
+                        Thread.Sleep(1000);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"{monster.Name}의 턴!");
+                    damage = random.Next(monster.AttackMin, monster.AttackMax);
+                    character.TakeDamage(damage);
+                    Thread.Sleep(1000);
+                }
+                Console.WriteLine();
+            }
+
+            StageClear();
+        }
+
+        public void StageClear()
+        {
+            Console.Clear();
+            if (character.IsDead == false)
+            {
+                if (monster2 != null)
+                {
+                    Console.WriteLine($"스테이지 클리어! {monster.Name}와 {monster2.Name}를 물리쳤습니다!\n");
+                }
+                else
+                {
+                    Console.WriteLine($"스테이지 클리어! {monster.Name}를 물리쳤습니다!\n");
+                }
+                Thread.Sleep(1000);
+
+                character.Gold += rewardGold;
+
+                Console.WriteLine("[탐험 결과]");
+                Console.WriteLine($"체력 {pastHp} -> {character.Hp}");
+                Console.WriteLine($"Gold {pastGold} G -> {character.Gold} G");
+                if (rewards != null)
+                {
+                    Console.Write("보상 ");
+                    foreach (MultipleItem item in rewards)
+                    {
+                        Console.Write(item.ItemName + " ");
+                        character.HavingMultipleItem(item);
+                    }
+                    Console.WriteLine();
+                }
+                Thread.Sleep(2000);
+            }
+            else
+            {
+                character.Hp = 0;
+            }
+        }
+    }
+
+    public class Monster
     {
         public string Name { get; }
+        public int Health { get; set; }
+        public int AttackMin { get; set; }
+        public int AttackMax { get; set; }
+
+        public bool IsDead => Health <= 0;
+
+        public Monster(string name, int health)
+        {
+            Name = name;
+            Health = health;
+        }
+
+        public void TakeDamage(int damage)
+        {
+            Health -= damage;
+            if (IsDead) Console.WriteLine($"{Name}이(가) 죽었습니다.");
+            else Console.WriteLine($"{Name}이(가) {damage}의 데미지를 받았습니다. 남은 체력: {Health}");
+        }
+    }
+    public class Goblin : Monster
+    {
+        public Goblin(string name) : base(name, 50) { }
+    }
+    public class Dragon : Monster
+    {
+        public Dragon(string name) : base(name, 1000) { }
+    }
+
+    public class Character
+    {
+        public string Name { get; set; }
         public string Job { get; }
         public int Level { get; set; }
         public int Atk { get; set; }
-        public int AdditionalAtk { get; set; }
+        public int AdditionalAtkEquip { get; set; }
         public int Def { get; set; }
-        public int AdditionalDef { get; set; }
+        public int AdditionalDefEquip { get; set; }
         public int Hp { get; set; }
+        public bool IsDead => Hp <= 0;
         public int Gold { get; set; }
 
         public List<SingleItem> Inventory_single;
@@ -483,6 +866,7 @@ namespace SpartaGame
         public List<MultipleItemStruct> Inventory_multiple;
         public List<String> Inventory_multiple_name;
         public List<MultipleItemStruct> Slot;
+        public List<String> Slot_name;
 
         public int Weapon_Able { get; set; } //0이면 장착하고 있는게 없는 것
         public int Armor_Able { get; set; }
@@ -493,12 +877,12 @@ namespace SpartaGame
             Job = job;
             Level = level;
             Atk = atk;
-            AdditionalAtk = 0;
+            AdditionalAtkEquip = 0;
             Def = def;
             Hp = hp;
             Gold = gold;
 
-            Inventory_single = new List<SingleItem> { new Lv1_Sword() , new Lv1_Shield()};
+            Inventory_single = new List<SingleItem> { new Lv1_Sword(), new Lv1_Shield() };
             Inventory_single_name = new List<string> { "초보자용 단검", "초보자용 방패" };
 
             MultipleItemStruct flawedHealthPotion;
@@ -510,8 +894,9 @@ namespace SpartaGame
             Inventory_multiple = new List<MultipleItemStruct> { flawedHealthPotion, flawedAttackPotion };
             Inventory_multiple_name = new List<string> { "하급 체력포션", "하급 공격력포션" };
             Slot = new List<MultipleItemStruct> { };
+            Slot_name = new List<String> { };
 
-            Weapon_Able = 0; 
+            Weapon_Able = 0;
             Armor_Able = 0;
         }
 
@@ -531,7 +916,7 @@ namespace SpartaGame
 
             Inventory_single_name.Remove(item.ItemName);
             Inventory_single.Remove(item);
-            Gold += item.Price * 85 /100;
+            Gold += item.Price * 85 / 100;
         }
 
         public void Equip(SingleItem item)
@@ -539,10 +924,10 @@ namespace SpartaGame
             switch (item.TypeNumber)
             {
                 case 0:
-                    if(Weapon_Able == 0) 
+                    if (Weapon_Able == 0)
                     {
                         Atk += item.Stats;
-                        AdditionalAtk += item.Stats;
+                        AdditionalAtkEquip += item.Stats;
                         Weapon_Able = 1;
                         item.ItemName = "[E] " + item.ItemName;
                         item.EquipCondition = 1;
@@ -557,7 +942,7 @@ namespace SpartaGame
                     if (Armor_Able == 0)
                     {
                         Def += item.Stats;
-                        AdditionalDef += item.Stats;
+                        AdditionalDefEquip += item.Stats;
                         Armor_Able = 1;
                         item.ItemName = "[E] " + item.ItemName;
                         item.EquipCondition = 1;
@@ -572,18 +957,18 @@ namespace SpartaGame
         }
         public void CancelEquip(SingleItem item)
         {
-            item.ItemName = item.ItemName.Replace("[E] ","");
+            item.ItemName = item.ItemName.Replace("[E] ", "");
             switch (item.TypeNumber)
             {
                 case 0:
                     Atk -= item.Stats;
-                    AdditionalAtk -= item.Stats;
+                    AdditionalAtkEquip -= item.Stats;
                     Weapon_Able = 0;
                     item.EquipCondition = 0;
                     break;
                 case 1:
                     Def -= item.Stats;
-                    AdditionalDef -= item.Stats;
+                    AdditionalDefEquip -= item.Stats;
                     Armor_Able = 0;
                     item.EquipCondition = 0;
                     break;
@@ -591,32 +976,45 @@ namespace SpartaGame
         }
         public void Insert(MultipleItemStruct std)
         {
-            std.item.ItemName = "[I] " + std.item.ItemName;
+            std.item.ItemName = std.item.ItemName;
             std.item.InsertCondition = 1;
             Slot.Add(std);
+            Slot_name.Add(std.item.ItemName);
         }
         public void CancelInsert(MultipleItemStruct std)
         {
-            std.item.ItemName = std.item.ItemName.Replace("[I] ", "");
-            std.item.InsertCondition = 0;
             Slot.Remove(std);
+            Slot_name.Remove(std.item.ItemName);
+            std.item.InsertCondition = 0;
         }
         public void HavingMultipleItem(MultipleItem item)
         {
-            if (Inventory_multiple_name.Contains(item.ItemName))
+            if (Slot_name.Contains(item.ItemName)) //인벤토리에도 있고 슬롯에도 있는 경우
+            {
+                MultipleItemStruct temp;
+                temp.amount = Inventory_multiple[Inventory_multiple_name.IndexOf(item.ItemName)].amount + 1;
+                temp.item = Inventory_multiple[Inventory_multiple_name.IndexOf(item.ItemName)].item;
+
+                CancelInsert(Slot[Slot_name.IndexOf(item.ItemName)]); 
+                Insert(temp); 
+
+                Inventory_multiple.RemoveAt(Inventory_multiple_name.IndexOf(item.ItemName));
+                Inventory_multiple_name.Remove(item.ItemName);
+                Inventory_multiple.Add(temp); 
+                Inventory_multiple_name.Add(item.ItemName);
+            }
+            else if (Inventory_multiple_name.Contains(item.ItemName)) //인벤토리에는 있지만 슬롯에는 없는 경우
             {
                 MultipleItemStruct temp;
                 temp.amount = Inventory_multiple[Inventory_multiple_name.IndexOf(item.ItemName)].amount + 1;
                 temp.item = item;
 
                 Inventory_multiple.RemoveAt(Inventory_multiple_name.IndexOf(item.ItemName));
-                Inventory_multiple_name.RemoveAt(Inventory_multiple_name.IndexOf(item.ItemName));
-
+                Inventory_multiple_name.Remove(item.ItemName);
                 Inventory_multiple.Add(temp);
                 Inventory_multiple_name.Add(item.ItemName);
-
             }
-            else
+            else //인벤토리에도 없는 경우
             {
                 MultipleItemStruct temp;
                 temp.amount = 1;
@@ -625,11 +1023,36 @@ namespace SpartaGame
                 Inventory_multiple.Add(temp);
                 Inventory_multiple_name.Add(item.ItemName);
             }
+
         }
         public void BuyingMultipleItem(MultipleItem item)
         {
             HavingMultipleItem(item);
             Gold -= item.Price;
+        }
+        public void UsingMultipleItem(MultipleItem item)
+        {
+            MultipleItemStruct temp;
+            temp.amount = Inventory_multiple[Inventory_multiple_name.IndexOf(item.ItemName)].amount - 1;
+            temp.item = Inventory_multiple[Inventory_multiple_name.IndexOf(item.ItemName)].item;
+
+            CancelInsert(Slot[Slot_name.IndexOf(item.ItemName)]);
+
+            Inventory_multiple.RemoveAt(Inventory_multiple_name.IndexOf(item.ItemName));
+            Inventory_multiple_name.Remove(item.ItemName);
+
+            if (temp.amount > 0) 
+            {
+                Insert(temp);
+                Inventory_multiple.Add(temp);
+                Inventory_multiple_name.Add(item.ItemName);
+            } 
+        }
+        public void TakeDamage(int damage)
+        {
+            Hp -= damage;
+            if (IsDead) Console.WriteLine($"{Name}이(가) 죽었습니다.");
+            else Console.WriteLine($"{Name}이(가) {damage}의 데미지를 받았습니다. 남은 체력: {Hp}");
         }
     }
 
@@ -637,7 +1060,7 @@ namespace SpartaGame
     {
         String ItemName { get; set; }
         String ItemExplain { get; set; }
-        
+
         public enum Typename
         {
             Weapon,
@@ -934,5 +1357,7 @@ namespace SpartaGame
             Stats = 10;
             InsertCondition = 0;
         }
+
     }
+
 }
